@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cajero — Simulador de retiro</title>
+    <style>
+      :root {
+        --bg: #15111f;
+        --chassis: #232030;
+        --chassis-2: #2c283b;
+        --screen: #1a1626;
+        --screen-line: #2a2340;
+        --violet: #8b6bf2;
+        --violet-dim: #5b4a86;
+        --violet-glow: #a894f7;
+        --gray: #9691a8;
+        --gray-dim: #6b6780;
+        --text: #e7e3f5;
+        --error: #e2725b;
+        --mono: "IBM Plex Mono", "Consolas", monospace;
+        --sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(
+          circle at 50% -10%,
+          #2a2440 0%,
+          var(--bg) 55%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--sans);
+        color: var(--text);
+        padding: 32px 16px;
+      }
+
+      .machine {
+        width: 100%;
+        max-width: 460px;
+        background: linear-gradient(180deg, var(--chassis-2), var(--chassis));
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow:
+          0 30px 60px -20px rgba(0, 0, 0, 0.6),
+          inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        border: 1px solid #38334a;
+      }
+
+      .brand {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        padding: 2px 6px 16px;
+      }
+      .brand-name {
+        font-size: 15px;
+        letter-spacing: 0.02em;
+        color: var(--gray);
+      }
+      .brand-name b {
+        color: var(--violet-glow);
+        font-weight: 600;
+      }
+      .brand-tag {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--gray-dim);
+      }
+
+      .screen {
+        background: var(--screen);
+        border-radius: 14px;
+        padding: 18px 18px 16px;
+        border: 1px solid #362f4d;
+        box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.45);
+      }
+
+      .field-label {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray);
+        margin-bottom: 8px;
+      }
+
+      .amount-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--screen-line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        border: 1px solid #3c3555;
+      }
+      .amount-row span.currency {
+        font-family: var(--mono);
+        color: var(--violet-glow);
+        font-size: 18px;
+      }
+      #monto {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 18px;
+        min-width: 0;
+      }
+      #monto::placeholder {
+        color: var(--gray-dim);
+      }
+
+      .limit-note {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--gray-dim);
+        margin-top: 8px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+      }
+      button {
+        flex: 1;
+        border: none;
+        border-radius: 10px;
+        padding: 11px 0;
+        font-family: var(--sans);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          transform 0.08s ease,
+          filter 0.15s ease;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      #retirarBtn {
+        background: linear-gradient(180deg, var(--violet), #6f4fd4);
+        color: #fff;
+      }
+      #retirarBtn:hover {
+        filter: brightness(1.08);
+      }
+      #limpiarBtn {
+        background: var(--screen-line);
+        color: var(--gray);
+        border: 1px solid #3c3555;
+      }
+      #limpiarBtn:hover {
+        filter: brightness(1.15);
+      }
+
+      .output {
+        margin-top: 16px;
+        min-height: 20px;
+      }
+
+      .prompt-line {
+        font-family: var(--mono);
+        font-size: 13px;
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .caret {
+        color: var(--violet-glow);
+      }
+      .caret.error {
+        color: var(--error);
+      }
+      .error {
+        color: var(--error);
+      }
+
+      .breakdown {
+        margin-top: 4px;
+      }
+      .breakdown-row {
+        display: flex;
+        align-items: baseline;
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text);
+        padding: 5px 0 5px 22px;
+      }
+      .breakdown-row .dots {
+        flex: 1;
+        border-bottom: 1px dotted var(--gray-dim);
+        margin: 0 8px;
+        transform: translateY(-4px);
+      }
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--violet-glow);
+        padding: 10px 0 0 22px;
+        margin-top: 6px;
+        border-top: 1px solid #3c3555;
+        font-weight: 600;
+      }
+
+      .tray-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--gray-dim);
+        margin: 18px 0 8px;
+        padding-top: 14px;
+        border-top: 1px dashed #3c3555;
+      }
+
+      .tray {
+        background: #100d18;
+        border-radius: 10px;
+        border: 1px solid #362f4d;
+        min-height: 74px;
+        padding: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        gap: 6px;
+      }
+
+      .empty-note {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--gray-dim);
+        align-self: center;
+        margin: auto;
+      }
+
+      .bill {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 600;
+        color: #1a1626;
+        padding: 7px 0;
+        width: 54px;
+        text-align: center;
+        border-radius: 5px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        opacity: 0;
+        transform: translateY(6px);
+        animation: billIn 0.28s ease forwards;
+      }
+      @keyframes billIn {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .d100 {
+        background: linear-gradient(180deg, #c9b6ff, #a894f7);
+      }
+      .d50 {
+        background: linear-gradient(180deg, #b7c1e0, #9096b8);
+        color: #15111f;
+      }
+      .d20 {
+        background: linear-gradient(180deg, #d8d3e8, #b4aecb);
+      }
+      .d10 {
+        background: linear-gradient(180deg, #e5e2ef, #c9c4dc);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bill {
+          animation: none;
+          opacity: 1;
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="machine">
+      <div class="brand">
+        <div class="brand-name"><b>BANCO</b> DEMO</div>
+        <div class="brand-tag">simulador de retiro</div>
+      </div>
+
+      <div class="screen">
+        <div class="field-label">Monto a retirar</div>
+        <div class="amount-row">
+          <span class="currency">$</span>
+          <input
+            id="monto"
+            type="text"
+            inputmode="numeric"
+            placeholder="Ej: 150000"
+            autocomplete="off"
+          />
+        </div>
+        <div class="limit-note">Múltiplos de $10 · máximo $2.700.000</div>
+
+        <div class="actions">
+          <button id="retirarBtn">Retirar</button>
+          <button id="limpiarBtn">Limpiar</button>
+        </div>
+
+        <div class="output" id="output"></div>
+
+        <div class="tray-label">Bandeja de billetes</div>
+        <div class="tray" id="bills">
+          <div class="empty-note">— sin retiro aún —</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const MONTO_MAXIMO = 2700000;
+
+      function calcularRetiro(monto) {
+        const denominaciones = [10, 20, 50, 100];
+        const unidades = [1, 2, 3, 4];
+        const cantidad = [0, 0, 0, 0];
+
+        if (monto <= 0 || monto % 10 !== 0) return cantidad;
+
+        let restante = monto;
+        const full = 600;
+        const ciclos = Math.floor(restante / full);
+
+        if (ciclos > 0) {
+          for (let i = 0; i < unidades.length; i++) {
+            cantidad[i] += ciclos * unidades[i];
+          }
+          restante -= ciclos * full;
+        }
+
+        while (restante > 0) {
+          const antes = restante;
+
+          for (
+            let skip = 0;
+            skip < denominaciones.length && restante > 0;
+            skip++
+          ) {
+            for (
+              let j = skip;
+              j < denominaciones.length && restante >= denominaciones[j];
+              j++
+            ) {
+              cantidad[j]++;
+              restante -= denominaciones[j];
+            }
+          }
+
+          if (restante === antes) break;
+        }
+
+        return cantidad;
+      }
+
+      const montoInput = document.getElementById("monto");
+      const output = document.getElementById("output");
+      const billsBox = document.getElementById("bills");
+      const retirarBtn = document.getElementById("retirarBtn");
+      const limpiarBtn = document.getElementById("limpiarBtn");
+
+      // orden interno: [10, 20, 50, 100] -> orden de presentación: 100, 50, 20, 10
+      const ordenVisual = [3, 2, 1, 0];
+      const nombres = ["$10", "$20", "$50", "$100"];
+      const clases = ["d10", "d20", "d50", "d100"];
+
+      function formatearMonto(n) {
+        return n.toLocaleString("es-CO");
+      }
+
+      function renderError(msg) {
+        output.innerHTML = `
+      <div class="prompt-line" style="margin-top:10px;">
+        <span class="caret error">!</span>
+        <span class="error">${msg}</span>
+      </div>
+    `;
+        billsBox.innerHTML = '<div class="empty-note">— sin retiro aún —</div>';
+      }
+
+      function renderResultado(monto, cantidad) {
+        const rows = ordenVisual
+          .map(
+            (i) => `
+      <div class="breakdown-row">
+        <span>Billetes de ${nombres[i]}</span>
+        <span class="dots"></span>
+        <span>${cantidad[i]}</span>
+      </div>
+    `,
+          )
+          .join("");
+
+        output.innerHTML = `
+      <div class="breakdown">
+        <div class="prompt-line"><span class="caret">&gt;</span><span>Desglose para $${formatearMonto(monto)}:</span></div>
+        ${rows}
+        <div class="total-row"><span>Total entregado</span><span>$${formatearMonto(monto)}</span></div>
+      </div>
+    `;
+
+        billsBox.innerHTML = "";
+        const totalBills = cantidad.reduce((a, b) => a + b, 0);
+
+        if (totalBills === 0) {
+          billsBox.innerHTML =
+            '<div class="empty-note">— no hay billetes para este monto —</div>';
+          return;
+        }
+
+        const MAX_VISUAL = 60;
+        let shown = 0;
+        let delay = 0;
+
+        for (const i of ordenVisual) {
+          for (let k = 0; k < cantidad[i] && shown < MAX_VISUAL; k++) {
+            const bill = document.createElement("div");
+            bill.className = `bill ${clases[i]}`;
+            bill.style.animationDelay = `${delay}ms`;
+            bill.textContent = nombres[i];
+            billsBox.appendChild(bill);
+            shown++;
+            delay += 18;
+          }
+        }
+
+        if (totalBills > MAX_VISUAL) {
+          const note = document.createElement("div");
+          note.className = "empty-note";
+          note.textContent = `+ ${totalBills - MAX_VISUAL} billetes más`;
+          billsBox.appendChild(note);
+        }
+      }
+
+      function retirar() {
+        const raw = montoInput.value.trim();
+        const monto = parseInt(raw, 10);
+
+        if (raw === "" || Number.isNaN(monto)) {
+          renderError("Ingrese un monto válido");
+          return;
+        }
+
+        if (monto <= 0) {
+          renderError("El monto debe ser un valor positivo");
+          return;
+        }
+
+        if (monto % 10 !== 0) {
+          renderError("El monto debe ser múltiplo de $10");
+          return;
+        }
+
+        if (monto > MONTO_MAXIMO) {
+          renderError(
+            `El monto excede el máximo permitido de $${formatearMonto(MONTO_MAXIMO)}`,
+          );
+          return;
+        }
+
+        const cantidad = calcularRetiro(monto);
+        renderResultado(monto, cantidad);
+      }
+
+      function limpiar() {
+        montoInput.value = "";
+        output.innerHTML = "";
+        billsBox.innerHTML = '<div class="empty-note">— sin retiro aún —</div>';
+        montoInput.focus();
+      }
+
+      retirarBtn.addEventListener("click", retirar);
+      limpiarBtn.addEventListener("click", limpiar);
+      montoInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") retirar();
+      });
+    </script>
+  </body>
+</html>
