@@ -98,6 +98,10 @@
         border-radius: 10px;
         padding: 10px 12px;
         border: 1px solid #3c3555;
+        transition: border-color 0.15s ease;
+      }
+      .amount-row.invalid {
+        border-color: var(--error);
       }
       .amount-row span.currency {
         font-family: var(--mono);
@@ -106,6 +110,7 @@
       }
       #monto {
         flex: 1;
+        width: 100%;
         background: transparent;
         border: none;
         outline: none;
@@ -113,6 +118,15 @@
         font-family: var(--mono);
         font-size: 18px;
         min-width: 0;
+      }
+      /* ocultar flechas del input number para look consistente */
+      #monto::-webkit-outer-spin-button,
+      #monto::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      #monto[type="number"] {
+        -moz-appearance: textfield;
       }
       #monto::placeholder {
         color: var(--gray-dim);
@@ -141,7 +155,8 @@
         cursor: pointer;
         transition:
           transform 0.08s ease,
-          filter 0.15s ease;
+          filter 0.15s ease,
+          opacity 0.15s ease;
       }
       button:active {
         transform: translateY(1px);
@@ -150,8 +165,14 @@
         background: linear-gradient(180deg, var(--violet), #6f4fd4);
         color: #fff;
       }
-      #retirarBtn:hover {
+      #retirarBtn:hover:not(:disabled) {
         filter: brightness(1.08);
+      }
+      #retirarBtn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        filter: none;
+        transform: none;
       }
       #limpiarBtn {
         background: var(--screen-line);
@@ -248,7 +269,7 @@
         font-weight: 600;
         color: #1a1626;
         padding: 7px 0;
-        width: 54px;
+        width: 58px;
         text-align: center;
         border-radius: 5px;
         border: 1px solid rgba(0, 0, 0, 0.15);
@@ -263,17 +284,17 @@
         }
       }
 
-      .d100 {
+      .d100k {
         background: linear-gradient(180deg, #c9b6ff, #a894f7);
       }
-      .d50 {
+      .d50k {
         background: linear-gradient(180deg, #b7c1e0, #9096b8);
         color: #15111f;
       }
-      .d20 {
+      .d20k {
         background: linear-gradient(180deg, #d8d3e8, #b4aecb);
       }
-      .d10 {
+      .d10k {
         background: linear-gradient(180deg, #e5e2ef, #c9c4dc);
       }
 
@@ -295,20 +316,22 @@
 
       <div class="screen">
         <div class="field-label">Monto a retirar</div>
-        <div class="amount-row">
+        <div class="amount-row" id="amountRow">
           <span class="currency">$</span>
           <input
             id="monto"
-            type="text"
+            type="number"
             inputmode="numeric"
+            min="0"
+            step="10000"
             placeholder="Ej: 150000"
             autocomplete="off"
           />
         </div>
-        <div class="limit-note">Múltiplos de $10 · máximo $2.700.000</div>
+        <div class="limit-note">Múltiplos de $10.000 · máximo $2.700.000</div>
 
         <div class="actions">
-          <button id="retirarBtn">Retirar</button>
+          <button id="retirarBtn" disabled>Retirar</button>
           <button id="limpiarBtn">Limpiar</button>
         </div>
 
@@ -322,17 +345,24 @@
     </div>
 
     <script>
+      // ---------------------------------------------------------------
+      // Lógica del cajero — denominaciones reales: $10.000, $20.000,
+      // $50.000, $100.000 (integrada en una sola función, con el
+      // arreglo auxiliar "unidades" preservado)
+      // ---------------------------------------------------------------
+
       const MONTO_MAXIMO = 2700000;
+      const DENOMINACION_MINIMA = 10000;
 
       function calcularRetiro(monto) {
-        const denominaciones = [10, 20, 50, 100];
+        const denominaciones = [10000, 20000, 50000, 100000];
         const unidades = [1, 2, 3, 4];
         const cantidad = [0, 0, 0, 0];
 
-        if (monto <= 0 || monto % 10 !== 0) return cantidad;
+        if (monto <= 0 || monto % DENOMINACION_MINIMA !== 0) return cantidad;
 
         let restante = monto;
-        const full = 600;
+        const full = 600000; // 1x10.000 + 2x20.000 + 3x50.000 + 4x100.000
         const ciclos = Math.floor(restante / full);
 
         if (ciclos > 0) {
@@ -366,19 +396,60 @@
         return cantidad;
       }
 
+      // ---------------------------------------------------------------
+      // Interfaz
+      // ---------------------------------------------------------------
+
       const montoInput = document.getElementById("monto");
+      const amountRow = document.getElementById("amountRow");
       const output = document.getElementById("output");
       const billsBox = document.getElementById("bills");
       const retirarBtn = document.getElementById("retirarBtn");
       const limpiarBtn = document.getElementById("limpiarBtn");
 
-      // orden interno: [10, 20, 50, 100] -> orden de presentación: 100, 50, 20, 10
+      // orden interno: [10k, 20k, 50k, 100k] -> orden de presentación: 100k, 50k, 20k, 10k
       const ordenVisual = [3, 2, 1, 0];
-      const nombres = ["$10", "$20", "$50", "$100"];
-      const clases = ["d10", "d20", "d50", "d100"];
+      const nombres = ["10 mil", "20 mil", "50 mil", "100 mil"];
+      const clases = ["d10k", "d20k", "d50k", "d100k"];
 
       function formatearMonto(n) {
         return n.toLocaleString("es-CO");
+      }
+
+      function esMontoValido(monto) {
+        return (
+          !Number.isNaN(monto) &&
+          monto > 0 &&
+          monto % DENOMINACION_MINIMA === 0 &&
+          monto <= MONTO_MAXIMO
+        );
+      }
+
+      // Validación en vivo: bloquea el botón "Retirar" mientras el
+      // monto no cumpla las condiciones (positivo, múltiplo de 10.000,
+      // dentro del máximo permitido)
+      function validarEnVivo() {
+        const raw = montoInput.value.trim();
+
+        if (raw === "") {
+          amountRow.classList.remove("invalid");
+          retirarBtn.disabled = true;
+          return;
+        }
+
+        const monto = Number(raw);
+        const valido = esMontoValido(monto);
+
+        retirarBtn.disabled = !valido;
+        amountRow.classList.toggle("invalid", !valido);
+      }
+
+      // Bloquea teclas que permitirían signos, decimales o notación
+      // científica dentro del input numérico
+      function bloquearTeclasInvalidas(e) {
+        if (["-", "+", "e", "E", ".", ","].includes(e.key)) {
+          e.preventDefault();
+        }
       }
 
       function renderError(msg) {
@@ -396,7 +467,7 @@
           .map(
             (i) => `
       <div class="breakdown-row">
-        <span>Billetes de ${nombres[i]}</span>
+        <span>${nombres[i]}</span>
         <span class="dots"></span>
         <span>${cantidad[i]}</span>
       </div>
@@ -406,7 +477,7 @@
 
         output.innerHTML = `
       <div class="breakdown">
-        <div class="prompt-line"><span class="caret">&gt;</span><span>Desglose para $${formatearMonto(monto)}:</span></div>
+        <div class="prompt-line"><span class="caret">&gt;</span><span>Desglose de billetes para $${formatearMonto(monto)}:</span></div>
         ${rows}
         <div class="total-row"><span>Total entregado</span><span>$${formatearMonto(monto)}</span></div>
       </div>
@@ -447,23 +518,20 @@
 
       function retirar() {
         const raw = montoInput.value.trim();
-        const monto = parseInt(raw, 10);
+        const monto = Number(raw);
 
         if (raw === "" || Number.isNaN(monto)) {
           renderError("Ingrese un monto válido");
           return;
         }
-
         if (monto <= 0) {
           renderError("El monto debe ser un valor positivo");
           return;
         }
-
-        if (monto % 10 !== 0) {
-          renderError("El monto debe ser múltiplo de $10");
+        if (monto % DENOMINACION_MINIMA !== 0) {
+          renderError("El monto debe ser múltiplo de $10.000");
           return;
         }
-
         if (monto > MONTO_MAXIMO) {
           renderError(
             `El monto excede el máximo permitido de $${formatearMonto(MONTO_MAXIMO)}`,
@@ -479,13 +547,16 @@
         montoInput.value = "";
         output.innerHTML = "";
         billsBox.innerHTML = '<div class="empty-note">— sin retiro aún —</div>';
+        validarEnVivo();
         montoInput.focus();
       }
 
       retirarBtn.addEventListener("click", retirar);
       limpiarBtn.addEventListener("click", limpiar);
+      montoInput.addEventListener("input", validarEnVivo);
+      montoInput.addEventListener("keydown", bloquearTeclasInvalidas);
       montoInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") retirar();
+        if (e.key === "Enter" && !retirarBtn.disabled) retirar();
       });
     </script>
   </body>
