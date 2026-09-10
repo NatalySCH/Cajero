@@ -563,9 +563,7 @@
           return;
         }
 
-        const montoTotal = ultimoMonto * n;
-        const desgloseTotal = calcularRetiroConMatriz(montoTotal);
-        const necesario = desgloseTotal.cantidad;
+        const necesario = ultimoCantidadPorRetiro.map((c) => c * n);
         const totalNecesario = necesario.reduce(
           (acc, c, i) => acc + c * VALORES[i],
           0,
