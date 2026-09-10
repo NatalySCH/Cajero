@@ -55,6 +55,60 @@
       // Inventario del cajero: $100.000.000, calculado con la MISMA lógica de acarreo
       const INVENTARIO_ATM = calcularRetiroConMatriz(100000000).cantidad;
 
+      // ---------------------------------------------------------------
+      // Estado persistente del cajero (inventario + historial de retiros)
+      // ---------------------------------------------------------------
+
+      const STORAGE_KEY_RETIROS = "cajero_retiros";
+      const STORAGE_KEY_INVENTARIO = "cajero_inventario";
+
+      let inventarioActual = [...INVENTARIO_ATM];
+      let historialRetiros = [];
+
+      function cargarEstado() {
+        const invRaw = localStorage.getItem(STORAGE_KEY_INVENTARIO);
+        try {
+          const inv = invRaw ? JSON.parse(invRaw) : null;
+          if (
+            Array.isArray(inv) &&
+            inv.length === VALORES.length &&
+            inv.every((n) => Number.isFinite(n) && n >= 0)
+          ) {
+            inventarioActual = inv.map(Number);
+          } else {
+            inventarioActual = [...INVENTARIO_ATM];
+          }
+        } catch {
+          inventarioActual = [...INVENTARIO_ATM];
+        }
+
+        const histRaw = localStorage.getItem(STORAGE_KEY_RETIROS);
+        try {
+          const hist = histRaw ? JSON.parse(histRaw) : [];
+          historialRetiros = Array.isArray(hist) ? hist : [];
+        } catch {
+          historialRetiros = [];
+        }
+      }
+
+      function guardarEstado() {
+        localStorage.setItem(
+          STORAGE_KEY_INVENTARIO,
+          JSON.stringify(inventarioActual),
+        );
+        localStorage.setItem(
+          STORAGE_KEY_RETIROS,
+          JSON.stringify(historialRetiros),
+        );
+      }
+
+      function reabastecerCajero() {
+        inventarioActual = [...INVENTARIO_ATM];
+        guardarEstado();
+      }
+
+      cargarEstado();
+
       // orden de presentación: 100k, 50k, 20k, 10k
       const ordenVisual = [3, 2, 1, 0];
       const nombres = ["10 mil", "20 mil", "50 mil", "100 mil"];
@@ -361,6 +415,24 @@
         }
 
         const { cantidad, filas } = calcularRetiroConMatriz(monto);
+
+        if (cantidad.some((c, i) => c > inventarioActual[i])) {
+          mostrarErrorConReabastecer(
+            `El cajero no cuenta con billetes suficientes para entregar $${formatearMonto(monto)} en este momento.`,
+          );
+          return;
+        }
+
+        inventarioActual = inventarioActual.map((c, i) => c - cantidad[i]);
+        historialRetiros.push({
+          fecha: new Date().toISOString(),
+          tipo: tipoActual,
+          principal,
+          monto,
+          cantidad,
+        });
+        guardarEstado();
+
         mostrarExito(tipoActual, principal, monto, cantidad, filas);
       }
 
@@ -374,6 +446,32 @@
     `;
         document.getElementById("nuevoRetiroBtn").textContent =
           "Reiniciar proceso";
+      }
+
+      function mostrarErrorConReabastecer(msg) {
+        detenerTemporizadorClave();
+        document.getElementById("stepForm").hidden = true;
+        document.getElementById("stepResultado").hidden = false;
+        document.getElementById("resultadoContenido").innerHTML = `
+      <div class="prompt-line"><span class="caret error">!</span><span class="error">${msg}</span></div>
+      <div class="reabastecer-actions">
+        <button id="reabastecerBtn">Reabastecer</button>
+      </div>
+      <div class="prompt-line" style="margin-top:6px;"><span class="caret error">!</span><span class="error">El proceso debe iniciarse nuevamente.</span></div>
+    `;
+        document.getElementById("nuevoRetiroBtn").textContent =
+          "Reiniciar proceso";
+        document
+          .getElementById("reabastecerBtn")
+          .addEventListener("click", () => {
+            reabastecerCajero();
+            document.getElementById("resultadoContenido").innerHTML = `
+        <div class="prompt-line"><span class="caret">&gt;</span><span>El cajero fue reabastecido a su inventario máximo.</span></div>
+        <div class="prompt-line" style="margin-top:6px;"><span class="caret">&gt;</span><span>Inicie un nuevo retiro para continuar.</span></div>
+      `;
+            document.getElementById("nuevoRetiroBtn").textContent =
+              "Nuevo retiro";
+          });
       }
 
       function mostrarExito(tipo, principal, monto, cantidad, filas) {
@@ -411,6 +509,14 @@
           )
           .join("");
 
+        const inventarioTotal = inventarioActual.reduce(
+          (acc, c, i) => acc + c * VALORES[i],
+          0,
+        );
+        const inventarioRows = ordenVisual
+          .map((i) => `${nombres[i]}: ${inventarioActual[i]}`)
+          .join("  ·  ");
+
         document.getElementById("stepForm").hidden = true;
         document.getElementById("stepResultado").hidden = false;
         document.getElementById("resultadoContenido").innerHTML = `
@@ -429,6 +535,7 @@
         <div class="field-label">¿Cuántos retiros de $${formatearMonto(monto)} desea verificar?</div>
         <div class="field-input"><input id="numRetirosInput" type="text" inputmode="numeric" placeholder="Ej: 50" autocomplete="off"></div>
         <div class="limit-note">El cajero cuenta con un inventario máximo de $100.000.000 en billetes.</div>
+        <div class="limit-note">Inventario actual: $${formatearMonto(inventarioTotal)} &nbsp;(${inventarioRows})</div>
         <div class="actions"><button id="verificarBtn">Verificar disponibilidad</button></div>
         <div id="verificacionResultado"></div>
       </div>
@@ -441,10 +548,10 @@
         });
         document
           .getElementById("verificarBtn")
-          .addEventListener("click", verificarDisponibilidad);
+          .addEventListener("click", () => verificarDisponibilidad(false));
       }
 
-      function verificarDisponibilidad() {
+      function verificarDisponibilidad(rebastecido) {
         const raw = document.getElementById("numRetirosInput").value.trim();
         const resultadoEl = document.getElementById("verificacionResultado");
         const n = parseInt(raw, 10);
@@ -464,19 +571,28 @@
           0,
         );
         const faltante = necesario.map((need, i) =>
-          Math.max(0, need - INVENTARIO_ATM[i]),
+          Math.max(0, need - inventarioActual[i]),
         );
         const posible = faltante.every((f) => f === 0);
+        const cabeEnMaximo = necesario.every(
+          (need, i) => need <= INVENTARIO_ATM[i],
+        );
 
         const filasNecesario = ordenVisual
           .map(
             (i) => `
-      <div class="breakdown-row"><span>${nombres[i]}</span><span class="dots"></span><span>${necesario[i]}</span></div>
+      <div class="breakdown-row"><span>${nombres[i]}</span><span class="dots"></span><span class="inv-need">${necesario[i]}</span><span class="inv-atm">(cajero: ${inventarioActual[i]})</span></div>
     `,
           )
           .join("");
 
         let html = "";
+
+        if (rebastecido) {
+          html += `
+        <div class="prompt-line" style="margin-top:10px;"><span class="caret">&gt;</span><span>Cajero reabastecido a su inventario máximo.</span></div>
+      `;
+        }
 
         if (posible) {
           html += `
@@ -484,7 +600,8 @@
           <span>Sí es posible realizar ${n} retiro${n !== 1 ? "s" : ""} de $${formatearMonto(ultimoMonto)} (total $${formatearMonto(totalNecesario)}).</span>
         </div>
         <div class="breakdown">
-          <div class="prompt-line"><span class="caret">&gt;</span><span>Billetes necesarios:</span></div>
+          <div class="prompt-line"><span class="caret">&gt;</span><span>Billetes necesarios y disponibles en cajero:</span></div>
+          <div class="inv-legend"><span>Denominación</span><span class="legend-spacer"></span><span class="inv-need">Necesarios</span><span class="inv-atm">Cajero tiene</span></div>
           ${filasNecesario}
         </div>
       `;
@@ -503,6 +620,7 @@
         </div>
         <div class="breakdown">
           <div class="prompt-line"><span class="caret">&gt;</span><span>Billetes necesarios (total $${formatearMonto(totalNecesario)}):</span></div>
+          <div class="inv-legend"><span>Denominación</span><span class="legend-spacer"></span><span class="inv-need">Necesarios</span><span class="inv-atm">Cajero tiene</span></div>
           ${filasNecesario}
         </div>
         <div class="breakdown">
@@ -510,9 +628,29 @@
           ${filasFaltante}
         </div>
       `;
+
+          if (cabeEnMaximo) {
+            html += `
+        <div class="reabastecer-actions">
+          <button id="reabastecerBtn">Reabastecer</button>
+        </div>
+      `;
+          } else {
+            html += `
+        <div class="prompt-line" style="margin-top:10px;"><span class="caret error">!</span><span class="error">Este monto total supera la capacidad máxima del cajero ($100.000.000), por lo que no es posible ni reabasteciendo.</span></div>
+      `;
+          }
         }
 
         resultadoEl.innerHTML = html;
+
+        const reabBtn = document.getElementById("reabastecerBtn");
+        if (reabBtn) {
+          reabBtn.addEventListener("click", () => {
+            reabastecerCajero();
+            verificarDisponibilidad(true);
+          });
+        }
       }
 
       function resetTodo() {

@@ -171,13 +171,15 @@
       }
       #retirarBtn,
       #nuevoRetiroBtn,
-      #verificarBtn {
+      #verificarBtn,
+      #reabastecerBtn {
         background: linear-gradient(180deg, var(--violet), #7a5fe0);
         color: #fff;
       }
       #retirarBtn:hover:not(:disabled),
       #nuevoRetiroBtn:hover,
-      #verificarBtn:hover {
+      #verificarBtn:hover,
+      #reabastecerBtn:hover {
         filter: brightness(1.1);
       }
       #retirarBtn:disabled {
@@ -365,6 +367,40 @@
         margin: 0 8px;
         transform: translateY(-4px);
       }
+      .breakdown-row .inv-need {
+        font-weight: 700;
+        color: var(--text);
+        min-width: 60px;
+        text-align: right;
+      }
+      .breakdown-row .inv-atm {
+        color: var(--gray);
+        font-size: 12px;
+        margin-left: 12px;
+        white-space: nowrap;
+      }
+      .inv-legend {
+        display: flex;
+        align-items: baseline;
+        font-family: var(--mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--gray-dim);
+        padding: 2px 0 2px 22px;
+      }
+      .inv-legend .legend-spacer {
+        flex: 1;
+        margin: 0 8px;
+      }
+      .inv-legend .inv-need {
+        min-width: 60px;
+        text-align: right;
+      }
+      .inv-legend .inv-atm {
+        margin-left: 12px;
+        white-space: nowrap;
+      }
       .total-row {
         display: flex;
         justify-content: space-between;
@@ -426,4 +462,9 @@
 
       .verificacion-box {
         margin-top: 4px;
+      }
+
+      .reabastecer-actions {
+        display: flex;
+        margin-top: 14px;
       }
