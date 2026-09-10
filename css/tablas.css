@@ -1,0 +1,31 @@
+/* Matriz de billetes */
+
+.billetes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.billetes-table th,
+.billetes-table td {
+  padding: 6px 4px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.billetes-table thead th {
+  color: var(--gray);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.billetes-table td.td-total {
+  color: var(--violet-glow);
+  font-weight: 700;
+}
+.billetes-table tfoot td {
+  font-weight: 700;
+  color: var(--text);
+  border-top: 1px solid var(--violet-dim);
+  background: rgba(155, 123, 255, 0.08);
+}

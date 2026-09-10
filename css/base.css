@@ -1,0 +1,37 @@
+:root {
+  --bg: #303036;
+  --chassis: #3d3d45;
+  --chassis-2: #47474f;
+  --screen: #26262c;
+  --screen-line: #34343c;
+  --border: #4a4a53;
+  --violet: #9b7bff;
+  --violet-dim: #6b5aa3;
+  --violet-glow: #c2b2ff;
+  --gray: #d4d4dc;
+  --gray-dim: #9a9aa4;
+  --text: #fbfbfd;
+  --error: #ff7a6b;
+  --mono: "IBM Plex Mono", "Consolas", monospace;
+  --sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(
+    circle at 50% -10%,
+    #46454f 0%,
+    var(--bg) 55%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sans);
+  color: var(--text);
+  padding: 32px 16px;
+}
