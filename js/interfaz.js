@@ -39,8 +39,8 @@ export function getPlantilla(tipo) {
   }
   if (tipo === "mano") {
     return `
-    <div class="field-label">Número (11 dígitos · inicia en 0 o 1 · segundo dígito 3)</div>
-    <div class="field-input"><input id="inputPrincipal" type="text" inputmode="numeric" maxlength="11" placeholder="03XXXXXXXXX" autocomplete="off"></div>
+    <div class="field-label">Número (11 dígitos · no inicia en 0)</div>
+    <div class="field-input"><input id="inputPrincipal" type="text" inputmode="numeric" maxlength="11" placeholder="Ingrese su número" autocomplete="off"></div>
     <div class="vector-preview" id="vectorPreview"></div>
 
     <div class="field-label" style="margin-top:14px;">Clave (4 dígitos)</div>
@@ -48,8 +48,8 @@ export function getPlantilla(tipo) {
   `;
   }
   return `
-  <div class="field-label">Número de cuenta (11 dígitos · inicia en 0 o 1 · segundo dígito 3)</div>
-  <div class="field-input"><input id="inputPrincipal" type="text" inputmode="numeric" maxlength="11" placeholder="03XXXXXXXXX" autocomplete="off"></div>
+  <div class="field-label">Número de cuenta (11 dígitos · no inicia en 0)</div>
+  <div class="field-input"><input id="inputPrincipal" type="text" inputmode="numeric" maxlength="11" placeholder="Ingrese su número" autocomplete="off"></div>
   <div class="vector-preview" id="vectorPreview"></div>
 
   <div class="field-label" style="margin-top:14px;">Clave (4 dígitos)</div>
