@@ -273,6 +273,7 @@
         const otroInput = document.getElementById("otroValorInput");
         otroInput.value = "";
         otroInput.dataset.raw = "";
+        otroInput.disabled = true;
 
         document.getElementById("stepTipo").hidden = true;
         document.getElementById("stepForm").hidden = false;
@@ -455,15 +456,17 @@
           return;
         }
 
-        const necesario = ultimoCantidadPorRetiro.map((c) => c * n);
-        const faltante = necesario.map((need, i) =>
-          Math.max(0, need - INVENTARIO_ATM[i]),
-        );
-        const posible = faltante.every((f) => f === 0);
+        const montoTotal = ultimoMonto * n;
+        const desgloseTotal = calcularRetiroConMatriz(montoTotal);
+        const necesario = desgloseTotal.cantidad;
         const totalNecesario = necesario.reduce(
           (acc, c, i) => acc + c * VALORES[i],
           0,
         );
+        const faltante = necesario.map((need, i) =>
+          Math.max(0, need - INVENTARIO_ATM[i]),
+        );
+        const posible = faltante.every((f) => f === 0);
 
         const filasNecesario = ordenVisual
           .map(
@@ -542,13 +545,18 @@
         btn.classList.add("active");
 
         const val = btn.dataset.monto;
+        const otroInput = document.getElementById("otroValorInput");
         if (val === "otro") {
           montoSeleccionado = "otro";
           document.getElementById("otroValorRow").hidden = false;
-          document.getElementById("otroValorInput").focus();
+          otroInput.disabled = false;
+          otroInput.focus();
         } else {
           montoSeleccionado = Number(val);
           document.getElementById("otroValorRow").hidden = true;
+          otroInput.value = "";
+          otroInput.dataset.raw = "";
+          otroInput.disabled = true;
         }
         validarFormulario();
       });
