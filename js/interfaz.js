@@ -39,7 +39,7 @@ export function getPlantilla(tipo) {
   }
   if (tipo === "mano") {
     return `
-    <div class="field-label">Número (11 dígitos · no inicia en 0)</div>
+    <div class="field-label">Número (11 dígitos · inicia en 1 o 0 y segundo dígito 3)</div>
     <div class="field-input"><input id="inputPrincipal" type="text" inputmode="numeric" maxlength="11" placeholder="Ingrese su número" autocomplete="off"></div>
     <div class="vector-preview" id="vectorPreview"></div>
 

@@ -21,8 +21,21 @@ export function filtrarNequi(value) {
   return out;
 }
 
-// Ahorro a la mano y Cuenta de ahorros: 11 dígitos, primer dígito ≠ 0
+// Ahorro a la mano: 11 dígitos, primer dígito 1 o 0 y segundo dígito 3
 export function filtrarMano(value) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  let out = "";
+  for (let i = 0; i < digits.length; i++) {
+    const c = digits[i];
+    if (i === 0 && c !== "0" && c !== "1") break;
+    if (i === 1 && c !== "3") break;
+    out += c;
+  }
+  return out;
+}
+
+// Cuenta de ahorros: 11 dígitos, primer dígito ≠ 0
+export function filtrarCuenta(value) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   let out = "";
   for (let i = 0; i < digits.length; i++) {
@@ -35,7 +48,8 @@ export function filtrarMano(value) {
 
 export function obtenerRegexPrincipal(tipo) {
   if (tipo === "nequi") return /^3\d{9}$/;
-  return /^[1-9]\d{10}$/; // mano y cuenta: 11 dígitos, primero ≠ 0
+  if (tipo === "mano") return /^[01]3\d{9}$/; // mano: primero 1 o 0, segundo 3
+  return /^[1-9]\d{10}$/; // cuenta: 11 dígitos, primero ≠ 0
 }
 
 // ---------------------------------------------------------------

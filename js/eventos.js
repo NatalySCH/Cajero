@@ -27,6 +27,7 @@ import {
   filtrarDigitos,
   filtrarNequi,
   filtrarMano,
+  filtrarCuenta,
   obtenerRegexPrincipal,
   formatearInputMonto,
 } from "./validaciones.js";
@@ -82,7 +83,9 @@ export function attachCampoListeners(tipo) {
     principal.value =
       tipo === "nequi"
         ? filtrarNequi(principal.value)
-        : filtrarMano(principal.value);
+        : tipo === "mano"
+          ? filtrarMano(principal.value)
+          : filtrarCuenta(principal.value);
 
     const vp = document.getElementById("vectorPreview");
     if (!principal.value) {
